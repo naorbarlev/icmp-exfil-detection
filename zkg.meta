@@ -1,0 +1,8 @@
+[package]
+description = Detects exfiltration of data over ICMP and writes to notice.log with the details of the exfil like duration, exfil size, source/dest ip, etc.
+credits = Rakesh Passa <rakesh4500@gmail.com>
+tags = ICMP, exfil, exfiltration, protocol misuse
+script_dir = scripts
+version = 1.0
+depends =
+    zeek >=3.2.0
