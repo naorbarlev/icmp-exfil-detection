@@ -46,10 +46,10 @@ export {
 	};
 
 	const icmp_exfil_threshold = 1500; # 1.5k
-	const non_identical_ICMP_payload_flow_threshold = 5;
-	const non_identical_ICMP_payload_threshold = 5;
+	const non_identical_ICMP_payload_flow_threshold = 5; #more that 5 echo + reply in current connection is different than previous
+	const non_identical_ICMP_payload_threshold = 5; # mote that 5 payload in icmp req != icmp resp
 	const alert_on_icmp_exfil = T &redef;
-	const alert_on_unpaired_echo_reply = T &redef;
+	const alert_on_unpaired_echo_reply = F &redef;
 	const alert_on_payload_asym = T &redef;
 	const alert_on_payload_asym_flow = T &redef;
 
@@ -110,7 +110,7 @@ function timestats(fi: flow_info): string
 function detect_exfil_with_asymetric_flow(fid: flow_id, fi: flow_info)
 	{
 	#ignore communication inside the network
-	if ( fid$resp_h in private_address )
+	if ( ( fid$resp_h in private_address ) || ( fid$resp_h in whitelist_ip ) )
 		return;
 
 	if ( fi$orig_bytes > icmp_exfil_threshold
@@ -144,10 +144,11 @@ function detect_exfil_with_asymetric_flow(fid: flow_id, fi: flow_info)
 		}
 	}
 
+#checks if payload in icmp req != icmp resp
 function detect_icmp_asym(fid: flow_id, fi: flow_info)
 	{
 	#ignore communication inside the network
-	if ( fid$resp_h in private_address )
+	if ( ( fid$resp_h in private_address ) || ( fid$resp_h in whitelist_ip ) )
 		return;
 
 	if ( flows[fid]$NonIdenticalICMPPayload >
@@ -184,7 +185,7 @@ function detect_icmp_asym(fid: flow_id, fi: flow_info)
 function detect_payload_flow_inconsistancy(fid: flow_id, fi: flow_info)
 	{
 	#ignore communication inside the network
-	if ( fid$resp_h in private_address )
+	if ( ( fid$resp_h in private_address ) || ( fid$resp_h in whitelist_ip ) )
 		return;
 	if ( fi$NonIdenticalICMPPayloadFlow >
 	    non_identical_ICMP_payload_flow_threshold )
@@ -281,7 +282,9 @@ function update_flow(c: connection, is_orig: bool, payload: string)
 		info$NonIdenticalICMPPayloadFlow = 0;
 		flows[fid] = info;
 		}
-	else if ( is_orig )
+	else #if we are here that means that we have in flows a record with this ip
+	    #so we check if prev echo req payload != current payload
+	if ( is_orig )
 		{
 		check_payload_flow_inconsistancy(fid, flows[fid]$payload, payload);
 		}
@@ -315,7 +318,7 @@ function detect_icmp_unpaired(c: connection, payload: string)
 	fid$resp_h = c$id$resp_h;
 
 	#ignore communication inside the network
-	if ( fid$resp_h in private_address )
+	if ( ( fid$resp_h in private_address ) || ( fid$resp_h in whitelist_ip ) )
 		return;
 
 	if ( fid !in flows )
