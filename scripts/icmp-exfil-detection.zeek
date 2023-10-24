@@ -61,18 +61,8 @@ export {
 	const whitelist_payloads: set[string] = { #"H^I^J^K^L^M^N^O^P^Q^R^S^T^U^V^W^X^Y^Z\\x1b\\x1c\\x1d\\x1e\\x1f !\"#$%&'()*+,-./01234567"
 	    };
 
-	type Info: record {
-		ts: time &log;
-		orig_h: addr &log;
-		resp_h: addr &log;
-		start_time_info: time &log &optional;
-		last_time_info: time &log &optional;
-		orig_bytes_info: count &log;
-		resp_bytes_info: count &log;
-		event_type: string &log;
-		duration: interval &log &optional;
+	redef record Notice::Info += {
 		event_count: count &log &optional;
-		msg: string &log;
 	};
 
 	type flow_id: record {
@@ -138,9 +128,10 @@ function detect_exfil_with_asymetric_flow(fid: flow_id, fi: flow_info)
 		    fi$last_time - fi$start_time, fi$orig_bytes,
 		    true_resp_bytes, fi$NonIdenticalICMPPayloadFlow);
 
-		NOTICE([ $note=ICMP_DataExfil, $msg=event_msg, $sub=event_sub_msg,
-		    $src=fid$orig_h, $dst=fid$resp_h, $identifier=cat(
-		    fid$orig_h, fid$resp_h), $suppress_for=0 sec ]);
+		NOTICE([ $note=ICMP_DataExfil, $event_count=fi$NonIdenticalICMPPayloadFlow,
+		    $msg=event_msg, $sub=event_sub_msg, $src=fid$orig_h,
+		    $dst=fid$resp_h, $identifier=cat(fid$orig_h, fid$resp_h),
+		    $suppress_for=0 sec ]);
 		}
 	}
 
@@ -176,9 +167,10 @@ function detect_icmp_asym(fid: flow_id, fi: flow_info)
 		    fi$last_time - fi$start_time, fi$orig_bytes,
 		    true_resp_bytes, fi$NonIdenticalICMPPayload);
 
-		NOTICE([ $note=ICMP_AsymPayload, $msg=event_msg, $sub=event_sub_msg,
-		    $src=fid$orig_h, $dst=fid$resp_h, $identifier=cat(
-		    fid$orig_h, fid$resp_h), $suppress_for=0 sec ]);
+		NOTICE([ $note=ICMP_AsymPayload, $event_count=fi$NonIdenticalICMPPayload,
+		    $msg=event_msg, $sub=event_sub_msg, $src=fid$orig_h,
+		    $dst=fid$resp_h, $identifier=cat(fid$orig_h, fid$resp_h),
+		    $suppress_for=0 sec ]);
 		}
 	}
 
@@ -187,6 +179,7 @@ function detect_payload_flow_inconsistancy(fid: flow_id, fi: flow_info)
 	#ignore communication inside the network
 	if ( ( fid$resp_h in private_address ) || ( fid$resp_h in whitelist_ip ) )
 		return;
+
 	if ( fi$NonIdenticalICMPPayloadFlow >
 	    non_identical_ICMP_payload_flow_threshold )
 		{
@@ -212,9 +205,10 @@ function detect_payload_flow_inconsistancy(fid: flow_id, fi: flow_info)
 		    fi$last_time - fi$start_time, fi$orig_bytes,
 		    true_resp_bytes, fi$NonIdenticalICMPPayloadFlow);
 
-		NOTICE([ $note=ICMP_AsymPayloadFlow, $msg=event_msg, $sub=event_sub_msg,
-		    $src=fid$orig_h, $dst=fid$resp_h, $identifier=cat(
-		    fid$orig_h, fid$resp_h), $suppress_for=0 sec ]);
+		NOTICE([ $note=ICMP_AsymPayloadFlow,
+		    $event_count=fi$NonIdenticalICMPPayloadFlow, $msg=event_msg,
+		    $sub=event_sub_msg, $src=fid$orig_h, $dst=fid$resp_h,
+		    $identifier=cat(fid$orig_h, fid$resp_h), $suppress_for=0 sec ]);
 		}
 	}
 
